@@ -1,105 +1,93 @@
 """
-CS:GO Round Winner - SVC + GridSearchCV
-Dataset: Kaggle "CS:GO Round Winner Classification" (christianlillelund)
-          arquivo csgo_round_snapshots.csv (122.410 snapshots, 97 colunas)
-Alvo: round_winner (CT=0 / T=1)
+LoL Esports 2022 (campeonatos profissionais) - SVC + GridSearchCV
+Dataset: Oracle's Elixir "2022_LoL_esports_match_data_from_OraclesElixir.csv"
+         (espelhado no Kaggle: arthur1511/lol-esports-2022)
+Pergunta: com o estado do jogo aos 15 minutos, o time azul vence a partida?
 """
 from pathlib import Path
 
 import joblib
 import pandas as pd
-from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
-from sklearn.model_selection import GridSearchCV, StratifiedKFold, train_test_split
+from sklearn.model_selection import GridSearchCV, StratifiedKFold
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 
 SEED = 42
-DATA = Path(__file__).parent / "data" / "csgo_round_snapshots.csv"
-TARGET = "round_winner"
-# SVC é O(n²)~O(n³) em memória/tempo: busca em amostra, avaliação em holdout grande
-N_GRID = 12_000
-N_TEST = 20_000
+ROOT = Path(__file__).parent
+DATA = ROOT / "data" / "2022_LoL_esports_match_data_from_OraclesElixir.csv"
+TARGET = "result"
+# eventos que, pelas regras de 2022, ocorrem antes dos 15 min
+# (1º dragão nasce aos 5:00, arauto aos 8:00). Nada de stats de fim de jogo.
+EARLY_OBJECTIVES = ["firstblood", "firstdragon", "firstherald"]
 
 
-def add_features(X: pd.DataFrame) -> pd.DataFrame:
-    """Diferenças CT - T: o que decide o round é a vantagem relativa, não o absoluto."""
-    X = X.copy()
-    for a in ["players_alive", "health", "armor", "money", "helmets", "score"]:
-        X[f"diff_{a}"] = X[f"ct_{a}"] - X[f"t_{a}"]
-    ct_w = [c for c in X.columns if c.startswith("ct_weapon_")]
-    t_w = [c for c in X.columns if c.startswith("t_weapon_")]
-    X["diff_weapons"] = X[ct_w].sum(axis=1) - X[t_w].sum(axis=1)
-    return X
+def load() -> pd.DataFrame:
+    df = pd.read_csv(DATA, low_memory=False)
+    print(f"bruto: {df.shape} (10 linhas de jogador + 2 de time por partida)")
+
+    # 1 linha por partida: linha de TIME do lado azul. Se o lado vermelho também
+    # entrasse, a mesma partida apareceria espelhada em treino e teste (vazamento).
+    df = df[(df["position"] == "team") & (df["side"] == "Blue")]
+
+    # N/A estrutural: jogos 'partial' (ex.: LPL) não têm NENHUMA stat de timeline.
+    # Imputar 100% das features de uma linha é inventar dado, então descartamos.
+    na_by_completeness = df.filter(like="at15").isna().mean(axis=1).groupby(df["datacompleteness"]).mean()
+    print(f"fração de N/A nas stats @15 por completude:\n{na_by_completeness.to_string()}")
+    df = df[df["datacompleteness"] == "complete"]
+
+    df = df.drop_duplicates(subset="gameid")
+    df["date"] = pd.to_datetime(df["date"])
+    df = df.sort_values("date").reset_index(drop=True)
+    print(f"partidas usadas: {len(df)} | vitória azul: {df[TARGET].mean():.3f}")
+    return df
 
 
-def load() -> tuple[pd.DataFrame, pd.Series]:
-    df = pd.read_csv(DATA)
-    print(f"bruto: {df.shape} | N/A: {df.isna().sum().sum()} | duplicadas: {df.duplicated().sum()}")
-
-    df = df.drop_duplicates()
-    df = df.dropna(subset=[TARGET])  # alvo nulo não pode ser imputado
-
-    # colunas constantes não carregam informação (ex.: armas nunca usadas)
-    const = [c for c in df.columns if df[c].nunique(dropna=False) <= 1]
-    df = df.drop(columns=const)
-    print(f"limpo: {df.shape} | constantes removidas: {const}")
-
-    y = (df.pop(TARGET) == "T").astype(int)          # encode binário do alvo
-    df["bomb_planted"] = df["bomb_planted"].astype(int)  # bool -> 0/1
-    return add_features(df), y
-
-
-def build_pipeline(X: pd.DataFrame) -> Pipeline:
-    cat_cols = ["map"]
-    num_cols = [c for c in X.columns if c not in cat_cols]
-
-    pre = ColumnTransformer([
-        ("num", Pipeline([
-            ("imp", SimpleImputer(strategy="median")),  # robustez a N/A em produção
-            ("sc", StandardScaler()),                   # SVC é sensível a escala
-        ]), num_cols),
-        ("cat", Pipeline([
-            ("imp", SimpleImputer(strategy="most_frequent")),
-            ("ohe", OneHotEncoder(handle_unknown="ignore", sparse_output=False)),
-        ]), cat_cols),
-    ])
-    return Pipeline([("pre", pre), ("svc", SVC(random_state=SEED))])
+def features(df: pd.DataFrame) -> pd.DataFrame:
+    # só colunas numéricas medidas aos 10/15 min -> nenhuma categórica, nenhum encode necessário
+    snap = [c for c in df.columns if c.endswith(("at10", "at15"))]
+    return df[snap + EARLY_OBJECTIVES].astype(float)
 
 
 def main():
-    X, y = load()
+    df = load()
+    X, y = features(df), df[TARGET].astype(int)
+    print(f"features: {X.shape[1]} numéricas | N/A restantes: {int(X.isna().sum().sum())}")
 
-    # holdout estratificado ANTES de qualquer fit -> sem vazamento de scaler/encoder
-    X_rest, X_test, y_rest, y_test = train_test_split(
-        X, y, test_size=N_TEST, stratify=y, random_state=SEED)
-    X_grid, _, y_grid, _ = train_test_split(
-        X_rest, y_rest, train_size=N_GRID, stratify=y_rest, random_state=SEED)
+    # split TEMPORAL: treina no começo da temporada, testa nos 20% finais (jogos futuros)
+    cut = int(len(X) * 0.8)
+    X_train, X_test, y_train, y_test = X.iloc[:cut], X.iloc[cut:], y.iloc[:cut], y.iloc[cut:]
+    print(f"treino até {df['date'].iloc[cut - 1]:%Y-%m-%d} ({cut}) | teste a partir de {df['date'].iloc[cut]:%Y-%m-%d} ({len(X_test)})")
 
+    pipe = Pipeline([
+        ("imp", SimpleImputer(strategy="median")),  # robustez a N/A pontual em produção
+        ("sc", StandardScaler()),                   # SVC é sensível a escala
+        ("svc", SVC(random_state=SEED)),
+    ])
     param_grid = [
-        {"svc__kernel": ["rbf"], "svc__C": [1, 10, 50], "svc__gamma": ["scale", 0.01, 0.05]},
-        {"svc__kernel": ["linear"], "svc__C": [0.1, 1]},
+        {"svc__kernel": ["linear"], "svc__C": [0.001, 0.01, 0.1, 1]},
+        {"svc__kernel": ["rbf"], "svc__C": [0.1, 1, 10], "svc__gamma": [0.001, 0.005, 0.01, "scale"]},
     ]
     grid = GridSearchCV(
-        build_pipeline(X), param_grid,
+        pipe, param_grid,
         cv=StratifiedKFold(5, shuffle=True, random_state=SEED),
         scoring="accuracy", n_jobs=-1, verbose=1,
     )
-    grid.fit(X_grid, y_grid)
+    grid.fit(X_train, y_train)
 
     print(f"\nmelhores params: {grid.best_params_}")
     print(f"acurácia CV (5-fold): {grid.best_score_:.4f}")
 
     y_pred = grid.predict(X_test)
-    print(f"acurácia holdout ({len(y_test)} amostras nunca vistas): {accuracy_score(y_test, y_pred):.4f}\n")
-    print(classification_report(y_test, y_pred, target_names=["CT", "T"], digits=4))
+    print(f"acurácia teste (jogos futuros): {accuracy_score(y_test, y_pred):.4f}\n")
+    print(classification_report(y_test, y_pred, target_names=["Red vence", "Blue vence"], digits=4))
     print("matriz de confusão:\n", confusion_matrix(y_test, y_pred))
 
-    out = Path(__file__).parent / "models"
+    out = ROOT / "models"
     out.mkdir(exist_ok=True)
-    joblib.dump(grid.best_estimator_, out / "svc_csgo.joblib")
+    joblib.dump(grid.best_estimator_, out / "svc_lol_esports.joblib")
     pd.DataFrame(grid.cv_results_).sort_values("rank_test_score")[
         ["params", "mean_test_score", "std_test_score", "mean_fit_time"]
     ].to_csv(out / "grid_results.csv", index=False)

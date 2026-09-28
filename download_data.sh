@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
-# Opção 1 (oficial): kaggle datasets download -d christianlillelund/csgo-round-winner-classification -p data --unzip
-# Opção 2 (mirror GitHub LFS do mesmo arquivo, sha256 e9851010...3827):
+# Fonte: Oracle's Elixir (dados oficiais de partidas profissionais de LoL, 2022)
+# Opção 1 (Kaggle): kaggle datasets download -d arthur1511/lol-esports-2022 -p data --unzip
+# Opção 2 (mirror GitHub LFS do CSV original):
 set -euo pipefail
 mkdir -p data
-curl -sSL -o data/csgo_round_snapshots.csv \
-  "https://media.githubusercontent.com/media/grv08singh/01_masterRepo/main/02_EPGC_Intellipaat/01%20EPGC%20-%20Live%20Classes/2025.08.24%20-%20EPGC%20ML%20-%20ML%20using%20PyCaret%20HandsOn/csgo_round_snapshots.csv"
-echo "e985101012756f365b4003ebbbb16012f5f4c513b83e1999545f618183113827  data/csgo_round_snapshots.csv" | sha256sum -c -
+F=data/2022_LoL_esports_match_data_from_OraclesElixir.csv
+curl -sSL -o "$F" \
+  "https://media.githubusercontent.com/media/Samuel-Kelly-hub/Esports-Results-Project/HEAD/data/2022_LoL_esports_match_data_from_OraclesElixir.csv"
+echo "13b811948dfc2fdaa52d19e3fd085a48088e2d4f68af53792ac684e49e063507  $F" | sha256sum -c -
