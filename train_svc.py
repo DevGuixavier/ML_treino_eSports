@@ -56,10 +56,17 @@ def main():
     X, y = features(df), df[TARGET].astype(int)
     print(f"features: {X.shape[1]} numéricas | N/A restantes: {int(X.isna().sum().sum())}")
 
-    # split TEMPORAL: treina no começo da temporada, testa nos 20% finais (jogos futuros)
-    cut = int(len(X) * 0.8)
-    X_train, X_test, y_train, y_test = X.iloc[:cut], X.iloc[cut:], y.iloc[:cut], y.iloc[cut:]
-    print(f"treino até {df['date'].iloc[cut - 1]:%Y-%m-%d} ({cut}) | teste a partir de {df['date'].iloc[cut]:%Y-%m-%d} ({len(X_test)})")
+    # split TEMPORAL cortando na virada do DIA: jogos de uma mesma série (MD3/MD5)
+    # acontecem no mesmo dia e nunca ficam divididos entre treino e teste
+    day = df["date"].dt.normalize()
+    cut_day = day.iloc[int(len(df) * 0.8)]
+    train = (day < cut_day).to_numpy()
+    X_train, X_test, y_train, y_test = X[train], X[~train], y[train], y[~train]
+
+    assert df["gameid"].is_unique, "partida duplicada"
+    assert not set(df.loc[train, "gameid"]) & set(df.loc[~train, "gameid"]), "partida em treino e teste"
+    assert day[train].max() < day[~train].min(), "série dividida entre treino e teste"
+    print(f"treino < {cut_day:%Y-%m-%d} ({train.sum()}) | teste >= {cut_day:%Y-%m-%d} ({(~train).sum()})")
 
     pipe = Pipeline([
         ("imp", SimpleImputer(strategy="median")),  # robustez a N/A pontual em produção

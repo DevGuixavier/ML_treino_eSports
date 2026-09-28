@@ -18,11 +18,11 @@ python train_svc.py
 | Categóricas | Não entram: só features numéricas aos 10/15 min, então nenhum encode é necessário |
 | N/A | Estrutural: jogos `partial` (ex.: LPL) têm 100% de N/A nas stats de timeline, então são descartados. Nos `complete`, 0 N/A. `SimpleImputer` fica no pipeline por robustez. |
 | Vazamento | Nenhuma stat de fim de jogo (torres, barões, ouro total). Só snapshots @10/@15 + first blood/dragão/arauto, que nascem aos 5:00 e 8:00. |
-| Split | **Temporal**: treino = 80% mais antigo, teste = jogos posteriores a 2022-08-10 (playoffs e Worlds) |
+| Split | **Temporal, cortado na virada do dia**: treino < 2022-08-10, teste >= 2022-08-10. Séries MD3/MD5 nunca ficam divididas. Asserts no código garantem: partida única, zero partida em treino e teste, zero série dividida. |
 | Escala | StandardScaler (SVC é sensível a escala) |
 
 ## Resultado
 - 10.656 partidas, 33 features numéricas
 - Melhor: `kernel=linear, C=0.01` (no interior do grid)
-- Acurácia CV 5-fold (treino): **74,8%**
-- Acurácia teste (jogos futuros, 2.132): **77,0%** (F1 Red 0,754 / Blue 0,785)
+- Acurácia CV 5-fold (treino): **74,6%**
+- Acurácia teste (jogos futuros, 2.150): **77,0%** (F1 Red 0,754 / Blue 0,785)
