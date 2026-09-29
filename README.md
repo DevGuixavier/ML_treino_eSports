@@ -24,9 +24,9 @@ python train_svc.py
 
 ## Tratamento dos dados
 - **1 linha por partida:** o dataset tem 12 linhas por jogo (10 jogadores + 2 times). Usei só a linha do time azul.
-- **Nulos:** os jogos `partial` (1.893) têm 100% de nulo nas stats de 10/15 min e foram removidos. Os jogos `complete` têm 0 nulos.
-- **Features (11):** diferença azul - vermelho de ouro, XP, CS e abates aos 10 e 15 min, mais first blood, primeiro dragão e primeiro arauto. Só numéricas, então não precisou de encode.
-- **Sem vazamento:** não usei stats de fim de jogo (torres, barão, ouro final), só dados até os 15 min.
+- **Nulos:** os jogos `partial` (1.893, principalmente das ligas chinesas LPL e LDL) têm 100% de nulo nas stats de 10/15 min e foram removidos. Os jogos `complete` têm 0 nulos.
+- **Features (8):** diferença azul - vermelho de ouro, XP, CS e abates aos 10 e 15 min. Só numéricas, então não precisou de encode.
+- **Sem vazamento:** só uso colunas medidas exatamente aos 10 e 15 min. Deixei de fora first blood, primeiro dragão e primeiro arauto porque o dataset não diz quando aconteceram (em 90 partidas o first blood foi depois dos 15 min). Também não uso stats de fim de jogo (torres, barão, ouro final).
 - **Normalização:** StandardScaler dentro do Pipeline (o SVM usa distância).
 - **Treino/teste:** separado por data (treino antes de 10/08/2022, teste depois), sem dividir séries MD3/MD5.
 
@@ -35,10 +35,11 @@ python train_svc.py
 |---|---|
 | Chute (sempre azul) | 53,6% |
 | Regra do ouro (quem tem mais ouro aos 15 min vence) | 76,1% |
-| **SVM (linear, C=0.1)** | **77,3%** |
+| **SVM (linear, C=0.1)** | **76,0%** |
 
-- Validação cruzada: 74,8% | Treino: 74,9%. O treino não ficou acima do teste, então não há overfitting.
-- O SVM ganha pouco da regra do ouro: a diferença de ouro aos 15 min já explica a maior parte do resultado.
+- Validação cruzada: 74,6% | Treino: 74,7% | Teste: 76,0%. O treino não ficou acima do teste, então não há overfitting.
+- O teste ficou um pouco acima do treino porque é o fim da temporada (playoffs e mundial), com jogos um pouco mais previsíveis. O esperado para jogos novos é entre 75% e 76%.
+- O SVM empata com a regra do ouro: a diferença de ouro aos 15 min é o fator que mais decide a partida, e o SVM aprendeu isso usando as 8 features.
 
 ## Gráficos
 1. **Distribuição do target:** 52,3% vitórias do azul e 47,7% do vermelho. As classes estão equilibradas, então não precisa balancear.
@@ -50,5 +51,5 @@ python train_svc.py
 3. **Vitória x diferença de ouro:** quanto mais ouro de vantagem, mais o time vence. É a relação principal que o SVM aprende.
 ![vitória](figures/03_vitoria_por_ouro.png)
 
-4. **Matriz de confusão (SVM no teste):** 1.663 acertos em 2.150 partidas (77,3%). Os erros estão parecidos nos dois lados (236 e 251), então o modelo não favorece nenhum time.
+4. **Matriz de confusão (SVM no teste):** 1.634 acertos em 2.150 partidas (76,0%). Os erros estão parecidos nos dois lados (255 e 261), então o modelo não favorece nenhum time.
 ![matriz](figures/04_matriz_confusao.png)

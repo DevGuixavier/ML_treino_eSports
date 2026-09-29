@@ -33,7 +33,8 @@ df = df_raw[(df_raw["position"] == "team") & (df_raw["side"] == "Blue")]
 
 
 # ---------------- 2. Valores nulos ----------------
-# Os jogos "partial" (ex.: liga chinesa) não têm nenhum dado de 10/15 min, é 100% nulo.
+# Os jogos "partial" (principalmente das ligas chinesas LPL e LDL) não têm nenhum dado
+# de 10/15 min, é 100% nulo.
 # Não dá para preencher uma linha inteira sem inventar o jogo, então removo esses jogos.
 # Nos jogos "complete" não sobra nenhum nulo.
 
@@ -41,7 +42,7 @@ stats_15 = [c for c in df.columns if c.endswith(("at10", "at15"))]
 print("\n% de nulos nas stats de 10/15 min por tipo de jogo:")
 print(df[stats_15].isna().mean(axis=1).groupby(df["datacompleteness"]).mean())
 
-df = df[df["datacompleteness"] == "complete"].drop_duplicates(subset="gameid")
+df = df[df["datacompleteness"] == "complete"].drop_duplicates(subset="gameid").copy()
 df["date"] = pd.to_datetime(df["date"])
 df = df.sort_values("date").reset_index(drop=True)
 print("\nPartidas depois da limpeza:", len(df))
@@ -52,10 +53,11 @@ print("Vitórias do azul:", f"{df[TARGET].mean():.1%}", "-> classes equilibradas
 # Features = o que o modelo "vê" para decidir.
 # Uso só a DIFERENÇA entre os times (azul - vermelho) aos 10 e 15 min:
 #   positivo = azul está na frente, negativo = vermelho está na frente.
-# Colunas como goldat15 e opp_goldat15 separadas dizem a mesma coisa que golddiffat15,
-# então deixei só as diferenças (testei com as 33 colunas e deu a mesma acurácia).
-# Os objetivos (1 = azul pegou primeiro, 0 = vermelho) acontecem antes dos 15 min.
-# Não uso nada de fim de jogo (torres, barão, ouro final) porque isso já mostra quem ganhou.
+# Colunas como goldat15 e opp_goldat15 separadas repetem a informação de golddiffat15,
+# então uso só as diferenças.
+# Só uso colunas medidas exatamente aos 10 e 15 min. Não uso first blood, primeiro dragão
+# e primeiro arauto porque o dataset não diz QUANDO aconteceram (podem ter sido depois dos 15 min).
+# Também não uso nada de fim de jogo (torres, barão, ouro final) porque isso já mostra quem ganhou.
 
 df["killsdiffat10"] = df["killsat10"] - df["opp_killsat10"]
 df["killsdiffat15"] = df["killsat15"] - df["opp_killsat15"]
@@ -63,7 +65,6 @@ df["killsdiffat15"] = df["killsat15"] - df["opp_killsat15"]
 features = [
     "golddiffat10", "xpdiffat10", "csdiffat10", "killsdiffat10",
     "golddiffat15", "xpdiffat15", "csdiffat15", "killsdiffat15",
-    "firstblood", "firstdragon", "firstherald",
 ]
 X = df[features].astype(float)
 y = df[TARGET].astype(int)
@@ -120,10 +121,10 @@ print(f"Acurácia na validação cruzada: {grid.best_score_:.1%}")
 
 
 # ---------------- 6. Resultado ----------------
-# Comparo o SVM com duas regras simples para saber se ele realmente ajuda:
+# Comparo o SVM com duas regras simples, que servem de referência:
 #   chute = sempre dizer "azul vence" (a classe mais comum)
 #   regra do ouro = quem tem mais ouro aos 15 min vence
-# Se o SVM não ganhar dessas regras, não valeria a pena usar um modelo.
+# Overfitting: se a acurácia no treino for bem maior que no teste, o modelo decorou o treino.
 
 y_pred = modelo.predict(X_test)
 acc_chute = (y_test == 1).mean()
@@ -133,8 +134,9 @@ acc_treino = accuracy_score(y_train, modelo.predict(X_train))
 
 print(f"\nChute (sempre azul): {acc_chute:.1%}")
 print(f"Regra do ouro:       {acc_ouro:.1%}")
-print(f"SVM:                 {acc_svm:.1%}")
-print(f"SVM no treino:       {acc_treino:.1%} -> próximo do teste, sem overfitting")
+print(f"SVM no teste:        {acc_svm:.1%}")
+print(f"SVM no treino:       {acc_treino:.1%}")
+print(f"Treino - teste:      {acc_treino - acc_svm:+.1%}")
 print(classification_report(y_test, y_pred, target_names=["Vermelho venceu", "Azul venceu"], digits=3))
 
 # salvando modelo, resultados do grid e dados tratados
