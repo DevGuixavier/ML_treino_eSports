@@ -179,20 +179,7 @@ plt.tight_layout()
 plt.savefig(FIG / "01_vitoria_por_ouro.png")
 plt.close()
 
-# 2 - (modelo) SVM comparado com as regras simples
-# Interpretação: mostra quanto o SVM ganha em cima de um chute e da regra do ouro.
-nomes = ["Chute\n(sempre azul)", "Regra do ouro\n(mais ouro vence)", "SVM"]
-valores = [acc_chute * 100, acc_ouro * 100, acc_svm * 100]
-plt.bar(nomes, valores, color=["gray", "gray", "tab:blue"])
-for i, v in enumerate(valores):
-    plt.text(i, v + 1, f"{v:.1f}%", ha="center")
-plt.ylim(0, 100)
-plt.title("Acurácia no teste")
-plt.ylabel("Acurácia (%)")
-plt.savefig(FIG / "02_svm_vs_regras.png")
-plt.close()
-
-# 3 - (modelo) acerto do SVM por nível de confiança
+# 2 - (modelo) acerto do SVM por nível de confiança
 # Interpretação: em jogos desequilibrados o SVM quase não erra,
 # em jogos parelhos ele fica perto de um chute.
 plt.bar(acerto_por_nivel.index, acerto_por_nivel.values * 100)
@@ -203,17 +190,17 @@ plt.ylim(0, 100)
 plt.title("Acerto do SVM por nível de confiança")
 plt.xlabel("Confiança (distância até a fronteira do SVM)")
 plt.ylabel("Acerto (%)")
-plt.savefig(FIG / "03_acerto_por_confianca.png")
+plt.savefig(FIG / "02_acerto_por_confianca.png")
 plt.close()
 
-# 4 - (modelo) matriz de confusão
+# 3 - (modelo) matriz de confusão
 # Interpretação: diagonal = acertos, fora da diagonal = erros.
 # Erros parecidos dos dois lados = o modelo não favorece nenhum time.
 ConfusionMatrixDisplay.from_predictions(y_test, y_pred, display_labels=["Vermelho", "Azul"], cmap="Blues")
 plt.title("Matriz de confusão - SVM no teste")
 plt.xlabel("Previsto")
 plt.ylabel("Real")
-plt.savefig(FIG / "04_matriz_confusao.png")
+plt.savefig(FIG / "03_matriz_confusao.png")
 plt.close()
 
 print("\nGráficos salvos em", FIG)

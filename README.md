@@ -45,11 +45,8 @@ python train_svc.py
 1. **Vitória x diferença de ouro (dados):** quanto mais ouro de vantagem, mais o time vence. É a relação principal que o SVM aprende.
 ![ouro](figures/01_vitoria_por_ouro.png)
 
-2. **SVM x regras simples:** o SVM supera o chute com folga e a regra do ouro por pouco.
-![comparação](figures/02_svm_vs_regras.png)
+2. **Acerto por confiança:** a confiança é a distância da partida até a fronteira do SVM. Quanto mais longe, mais ele acerta.
+![confiança](figures/02_acerto_por_confianca.png)
 
-3. **Acerto por confiança:** a confiança é a distância da partida até a fronteira do SVM. Quanto mais longe, mais ele acerta.
-![confiança](figures/03_acerto_por_confianca.png)
-
-4. **Matriz de confusão:** 1.663 acertos em 2.150 partidas. Os erros estão parecidos nos dois lados (236 e 251), então o modelo não favorece nenhum time.
-![matriz](figures/04_matriz_confusao.png)
+3. **Matriz de confusão:** 1.663 acertos em 2.150 partidas. Os erros estão parecidos nos dois lados (236 e 251), então o modelo não favorece nenhum time.
+![matriz](figures/03_matriz_confusao.png)
