@@ -141,33 +141,44 @@ FIG.mkdir(exist_ok=True)
 for antigo in FIG.glob("*.png"):
     antigo.unlink()
 
-# 1 - por que normalizar: as colunas têm escalas muito diferentes e o SVM usa distância
-cols = ["goldat15", "xpat15", "csat15", "killsat15"]
-fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 4))
-ax1.boxplot(X_train[cols], tick_labels=cols)
-ax1.set_title("Antes da normalização")
-ax2.boxplot(StandardScaler().fit_transform(X_train[cols]), tick_labels=cols)
-ax2.set_title("Depois do StandardScaler")
-plt.tight_layout()
-plt.savefig(FIG / "01_normalizacao.png")
+# gráficos 1 a 3 vêm dos dados (partidas reais), o 4 vem do modelo
+
+# 1 - quantas vitórias de cada lado
+vitorias = y.value_counts().sort_index()
+plt.bar(["Vermelho", "Azul"], vitorias.values, color=["red", "blue"])
+plt.title("Vitórias por lado")
+plt.ylabel("Partidas")
+plt.savefig(FIG / "01_vitorias_por_lado.png")
 plt.close()
 
-# 2 - resultado do GridSearch para cada combinação testada no SVM
-res = pd.DataFrame(grid.cv_results_).sort_values("mean_test_score")
-nomes = [str(p).replace("svc__", "") for p in res["params"]]
-plt.figure(figsize=(9, 6))
-plt.barh(nomes, res["mean_test_score"])
-plt.xlim(0.70, 0.76)
-plt.xlabel("Acurácia média na validação cruzada")
-plt.title("GridSearchCV - SVM")
+# 2 - taxa de vitória do azul de acordo com a diferença de ouro aos 15 min
+faixas = pd.cut(df["golddiffat15"], bins=[-20000, -4000, -2000, -1000, 0, 1000, 2000, 4000, 20000],
+                labels=["< -4k", "-4k a -2k", "-2k a -1k", "-1k a 0", "0 a 1k", "1k a 2k", "2k a 4k", "> 4k"])
+taxa = df.groupby(faixas, observed=True)[TARGET].mean() * 100
+plt.figure(figsize=(8, 4))
+plt.bar(taxa.index.astype(str), taxa.values)
+plt.axhline(50, color="gray", linestyle="--")
+plt.title("Vitória do azul x diferença de ouro aos 15 min")
+plt.xlabel("Diferença de ouro (azul - vermelho)")
+plt.ylabel("Vitória do azul (%)")
 plt.tight_layout()
-plt.savefig(FIG / "02_gridsearch.png")
+plt.savefig(FIG / "02_vitoria_por_ouro.png")
 plt.close()
 
-# 3 - matriz de confusão no teste
+# 3 - taxa de vitória do azul quando ele pega o objetivo primeiro
+taxa_obj = [df.loc[df[c] == 1, TARGET].mean() * 100 for c in EARLY_OBJECTIVES]
+plt.bar(["First blood", "Primeiro dragão", "Primeiro arauto"], taxa_obj)
+plt.axhline(50, color="gray", linestyle="--")
+plt.title("Vitória do azul quando pega o objetivo primeiro")
+plt.ylabel("Vitória (%)")
+plt.ylim(0, 100)
+plt.savefig(FIG / "03_vitoria_por_objetivo.png")
+plt.close()
+
+# 4 - matriz de confusão do SVM no teste
 ConfusionMatrixDisplay.from_predictions(y_test, y_pred, display_labels=["Vermelho", "Azul"], cmap="Blues")
-plt.title("Matriz de confusão - teste")
-plt.savefig(FIG / "03_matriz_confusao.png")
+plt.title("Matriz de confusão - SVM no teste")
+plt.savefig(FIG / "04_matriz_confusao.png")
 plt.close()
 
 print("\nGráficos salvos em", FIG)

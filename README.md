@@ -40,11 +40,16 @@ python train_svc.py
 Melhores parâmetros: `kernel=linear, C=0.01`. Treino e teste ficaram próximos, então não teve overfitting.
 
 ## Gráficos
-1. **Normalização:** as colunas têm escalas muito diferentes (ouro na casa dos milhares, abates perto de 0). Como o SVM usa distância, precisa do StandardScaler.
-![normalização](figures/01_normalizacao.png)
+Os gráficos 1 a 3 vêm dos dados (partidas reais). O 4 vem do modelo.
 
-2. **GridSearchCV:** acurácia média de cada combinação testada. O melhor foi o kernel linear com C=0.01.
-![grid](figures/02_gridsearch.png)
+1. **Vitórias por lado:** o azul vence 52,3% das partidas, então as classes estão equilibradas.
+![lado](figures/01_vitorias_por_lado.png)
 
-3. **Matriz de confusão no teste:** 1.656 acertos em 2.150 partidas (77,0%).
-![matriz](figures/03_matriz_confusao.png)
+2. **Vitória x diferença de ouro aos 15 min:** quanto maior a vantagem de ouro, maior a chance de vencer. Com mais de 4k de vantagem, o azul vence mais de 90% das vezes.
+![ouro](figures/02_vitoria_por_ouro.png)
+
+3. **Vitória de quem pega o objetivo primeiro:** first blood 63%, primeiro dragão 62%, primeiro arauto 59%.
+![objetivos](figures/03_vitoria_por_objetivo.png)
+
+4. **Matriz de confusão (SVM no teste):** 1.656 acertos em 2.150 partidas (77,0%).
+![matriz](figures/04_matriz_confusao.png)
