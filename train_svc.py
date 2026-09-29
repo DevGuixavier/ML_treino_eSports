@@ -6,7 +6,6 @@ from pathlib import Path
 
 import joblib
 import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
 from sklearn.impute import SimpleImputer
 from sklearn.metrics import ConfusionMatrixDisplay, accuracy_score, classification_report
@@ -138,15 +137,6 @@ print(f"SVM:                 {acc_svm:.1%}")
 print(f"SVM no treino:       {acc_treino:.1%} -> próximo do teste, sem overfitting")
 print(classification_report(y_test, y_pred, target_names=["Vermelho venceu", "Azul venceu"], digits=3))
 
-# Confiança: o SVM dá a distância de cada partida até a fronteira (decision_function).
-# Longe da fronteira = jogo desequilibrado, o modelo tem mais certeza.
-# Perto da fronteira = jogo parelho, o modelo tem pouca certeza.
-distancia = np.abs(modelo.decision_function(X_test))
-nivel = pd.qcut(distancia, 4, labels=["Baixa", "Média", "Alta", "Muito alta"])
-acerto_por_nivel = pd.Series(y_pred == y_test.to_numpy()).groupby(np.asarray(nivel)).mean()
-acerto_por_nivel = acerto_por_nivel.reindex(["Baixa", "Média", "Alta", "Muito alta"])
-print("Acerto por confiança do SVM:\n", (acerto_por_nivel * 100).round(1))
-
 # salvando modelo, resultados do grid e dados tratados
 (ROOT / "models").mkdir(exist_ok=True)
 joblib.dump(modelo, ROOT / "models" / "svc_lol_esports.joblib")
@@ -163,7 +153,34 @@ FIG.mkdir(exist_ok=True)
 for antigo in FIG.glob("*.png"):
     antigo.unlink()
 
-# 1 - (dados) vitória do azul de acordo com a diferença de ouro aos 15 min
+# 1 - (dados) distribuição do target
+# Interpretação: as duas classes têm quantidades parecidas, então não precisa balancear.
+vitorias = y.value_counts().sort_index()
+plt.bar(["Vermelho venceu", "Azul venceu"], vitorias.values, color=["red", "blue"])
+for i, v in enumerate(vitorias.values):
+    plt.text(i, v + 50, f"{v} ({v / len(y):.1%})", ha="center")
+plt.title("Distribuição do target")
+plt.ylabel("Partidas")
+plt.savefig(FIG / "01_distribuicao_target.png")
+plt.close()
+
+# 2 - (dados) distribuição da diferença de ouro aos 15 min, separada por quem venceu
+# Interpretação: quando o azul vence, a diferença fica mais à direita (positiva);
+# quando perde, fica mais à esquerda. A parte onde as cores se misturam são os jogos
+# parelhos, que é onde o modelo mais erra.
+plt.figure(figsize=(8, 4))
+plt.hist(df.loc[y == 0, "golddiffat15"], bins=50, alpha=0.6, color="red", label="Vermelho venceu")
+plt.hist(df.loc[y == 1, "golddiffat15"], bins=50, alpha=0.6, color="blue", label="Azul venceu")
+plt.axvline(0, color="black", linestyle="--")
+plt.title("Distribuição da diferença de ouro aos 15 min")
+plt.xlabel("Diferença de ouro (azul - vermelho)")
+plt.ylabel("Partidas")
+plt.legend()
+plt.tight_layout()
+plt.savefig(FIG / "02_distribuicao_ouro.png")
+plt.close()
+
+# 3 - (dados) vitória do azul de acordo com a diferença de ouro aos 15 min
 # Interpretação: quanto mais ouro de vantagem, mais o time vence.
 # É a relação principal que o SVM aprende.
 faixas = pd.cut(df["golddiffat15"], bins=[-20000, -4000, -2000, -1000, 0, 1000, 2000, 4000, 20000],
@@ -176,31 +193,17 @@ plt.title("Vitória do azul x diferença de ouro aos 15 min")
 plt.xlabel("Diferença de ouro (azul - vermelho)")
 plt.ylabel("Vitória do azul (%)")
 plt.tight_layout()
-plt.savefig(FIG / "01_vitoria_por_ouro.png")
+plt.savefig(FIG / "03_vitoria_por_ouro.png")
 plt.close()
 
-# 2 - (modelo) acerto do SVM por nível de confiança
-# Interpretação: em jogos desequilibrados o SVM quase não erra,
-# em jogos parelhos ele fica perto de um chute.
-plt.bar(acerto_por_nivel.index, acerto_por_nivel.values * 100)
-for i, v in enumerate(acerto_por_nivel.values * 100):
-    plt.text(i, v + 1, f"{v:.0f}%", ha="center")
-plt.axhline(50, color="gray", linestyle="--")
-plt.ylim(0, 100)
-plt.title("Acerto do SVM por nível de confiança")
-plt.xlabel("Confiança (distância até a fronteira do SVM)")
-plt.ylabel("Acerto (%)")
-plt.savefig(FIG / "02_acerto_por_confianca.png")
-plt.close()
-
-# 3 - (modelo) matriz de confusão
+# 4 - (modelo) matriz de confusão
 # Interpretação: diagonal = acertos, fora da diagonal = erros.
 # Erros parecidos dos dois lados = o modelo não favorece nenhum time.
 ConfusionMatrixDisplay.from_predictions(y_test, y_pred, display_labels=["Vermelho", "Azul"], cmap="Blues")
 plt.title("Matriz de confusão - SVM no teste")
 plt.xlabel("Previsto")
 plt.ylabel("Real")
-plt.savefig(FIG / "03_matriz_confusao.png")
+plt.savefig(FIG / "04_matriz_confusao.png")
 plt.close()
 
 print("\nGráficos salvos em", FIG)

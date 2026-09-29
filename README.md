@@ -39,14 +39,16 @@ python train_svc.py
 
 - Validação cruzada: 74,8% | Treino: 74,9%. O treino não ficou acima do teste, então não há overfitting.
 - O SVM ganha pouco da regra do ouro: a diferença de ouro aos 15 min já explica a maior parte do resultado.
-- Quando o SVM está confiante (jogo desequilibrado), acerta 94%. Em jogos parelhos, 60%.
 
 ## Gráficos
-1. **Vitória x diferença de ouro (dados):** quanto mais ouro de vantagem, mais o time vence. É a relação principal que o SVM aprende.
-![ouro](figures/01_vitoria_por_ouro.png)
+1. **Distribuição do target:** 52,3% vitórias do azul e 47,7% do vermelho. As classes estão equilibradas, então não precisa balancear.
+![target](figures/01_distribuicao_target.png)
 
-2. **Acerto por confiança:** a confiança é a distância da partida até a fronteira do SVM. Quanto mais longe, mais ele acerta.
-![confiança](figures/02_acerto_por_confianca.png)
+2. **Distribuição da diferença de ouro aos 15 min:** quando o azul vence, a diferença fica mais para a direita (positiva), e quando perde, mais para a esquerda. A parte em que as cores se misturam são os jogos parelhos, onde o modelo mais erra.
+![ouro](figures/02_distribuicao_ouro.png)
 
-3. **Matriz de confusão:** 1.663 acertos em 2.150 partidas. Os erros estão parecidos nos dois lados (236 e 251), então o modelo não favorece nenhum time.
-![matriz](figures/03_matriz_confusao.png)
+3. **Vitória x diferença de ouro:** quanto mais ouro de vantagem, mais o time vence. É a relação principal que o SVM aprende.
+![vitória](figures/03_vitoria_por_ouro.png)
+
+4. **Matriz de confusão (SVM no teste):** 1.663 acertos em 2.150 partidas (77,3%). Os erros estão parecidos nos dois lados (236 e 251), então o modelo não favorece nenhum time.
+![matriz](figures/04_matriz_confusao.png)
