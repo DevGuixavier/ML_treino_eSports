@@ -40,10 +40,11 @@ python train_svc.py
 Melhores parâmetros: `kernel=linear, C=0.01`. Treino e teste ficaram próximos, então não teve overfitting.
 
 ## Gráficos
-![target](figures/01_distribuicao_target.png)
-![nulos](figures/02_nulos_por_completude.png)
-![correlação](figures/03_correlacao_features.png)
-![ouro](figures/04_vitoria_por_ouro.png)
-![curva C](figures/05_curva_validacao_C.png)
-![matriz](figures/06_matriz_confusao.png)
-![acurácia](figures/07_acuracia_final.png)
+1. **Normalização:** as colunas têm escalas muito diferentes (ouro na casa dos milhares, abates perto de 0). Como o SVM usa distância, precisa do StandardScaler.
+![normalização](figures/01_normalizacao.png)
+
+2. **GridSearchCV:** acurácia média de cada combinação testada. O melhor foi o kernel linear com C=0.01.
+![grid](figures/02_gridsearch.png)
+
+3. **Matriz de confusão no teste:** 1.656 acertos em 2.150 partidas (77,0%).
+![matriz](figures/03_matriz_confusao.png)
