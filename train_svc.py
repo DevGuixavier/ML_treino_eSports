@@ -121,22 +121,14 @@ print(f"Acurácia na validação cruzada: {grid.best_score_:.1%}")
 
 
 # ---------------- 6. Resultado ----------------
-# Comparo o SVM com duas regras simples, que servem de referência:
-#   chute = sempre dizer "azul vence" (a classe mais comum)
-#   regra do ouro = quem tem mais ouro aos 15 min vence
 # Overfitting: se a acurácia no treino for bem maior que no teste, o modelo decorou o treino.
 
 y_pred = modelo.predict(X_test)
-acc_chute = (y_test == 1).mean()
-acc_ouro = ((X_test["golddiffat15"] > 0).astype(int) == y_test).mean()
-acc_svm = accuracy_score(y_test, y_pred)
 acc_treino = accuracy_score(y_train, modelo.predict(X_train))
+acc_teste = accuracy_score(y_test, y_pred)
 
-print(f"\nChute (sempre azul): {acc_chute:.1%}")
-print(f"Regra do ouro:       {acc_ouro:.1%}")
-print(f"SVM no teste:        {acc_svm:.1%}")
-print(f"SVM no treino:       {acc_treino:.1%}")
-print(f"Treino - teste:      {acc_treino - acc_svm:+.1%}")
+print(f"\nAcurácia no treino: {acc_treino:.1%}")
+print(f"Acurácia no teste:  {acc_teste:.1%}")
 print(classification_report(y_test, y_pred, target_names=["Vermelho venceu", "Azul venceu"], digits=3))
 
 # salvando modelo, resultados do grid e dados tratados
@@ -182,30 +174,14 @@ plt.tight_layout()
 plt.savefig(FIG / "02_distribuicao_ouro.png")
 plt.close()
 
-# 3 - (dados) vitória do azul de acordo com a diferença de ouro aos 15 min
-# Interpretação: quanto mais ouro de vantagem, mais o time vence.
-# É a relação principal que o SVM aprende.
-faixas = pd.cut(df["golddiffat15"], bins=[-20000, -4000, -2000, -1000, 0, 1000, 2000, 4000, 20000],
-                labels=["< -4k", "-4k a -2k", "-2k a -1k", "-1k a 0", "0 a 1k", "1k a 2k", "2k a 4k", "> 4k"])
-taxa = df.groupby(faixas, observed=True)[TARGET].mean() * 100
-plt.figure(figsize=(8, 4))
-plt.bar(taxa.index.astype(str), taxa.values)
-plt.axhline(50, color="gray", linestyle="--")
-plt.title("Vitória do azul x diferença de ouro aos 15 min")
-plt.xlabel("Diferença de ouro (azul - vermelho)")
-plt.ylabel("Vitória do azul (%)")
-plt.tight_layout()
-plt.savefig(FIG / "03_vitoria_por_ouro.png")
-plt.close()
-
-# 4 - (modelo) matriz de confusão
+# 3 - (modelo) matriz de confusão
 # Interpretação: diagonal = acertos, fora da diagonal = erros.
 # Erros parecidos dos dois lados = o modelo não favorece nenhum time.
 ConfusionMatrixDisplay.from_predictions(y_test, y_pred, display_labels=["Vermelho", "Azul"], cmap="Blues")
 plt.title("Matriz de confusão - SVM no teste")
 plt.xlabel("Previsto")
 plt.ylabel("Real")
-plt.savefig(FIG / "04_matriz_confusao.png")
+plt.savefig(FIG / "03_matriz_confusao.png")
 plt.close()
 
 print("\nGráficos salvos em", FIG)
