@@ -25,31 +25,31 @@ python train_svc.py
 ## Tratamento dos dados
 - **1 linha por partida:** o dataset tem 12 linhas por jogo (10 jogadores + 2 times). Usei só a linha do time azul.
 - **Nulos:** os jogos `partial` (1.893) têm 100% de nulo nas stats de 10/15 min e foram removidos. Os jogos `complete` têm 0 nulos.
-- **Categóricas:** só usei colunas numéricas, então não precisou de encode.
-- **Normalização:** StandardScaler, dentro do Pipeline.
-- **Sem vazamento:** não usei stats de fim de jogo (torres, barão, ouro total), só dados até os 15 min.
+- **Features (11):** diferença azul - vermelho de ouro, XP, CS e abates aos 10 e 15 min, mais first blood, primeiro dragão e primeiro arauto. Só numéricas, então não precisou de encode.
+- **Sem vazamento:** não usei stats de fim de jogo (torres, barão, ouro final), só dados até os 15 min.
+- **Normalização:** StandardScaler dentro do Pipeline (o SVM usa distância).
 - **Treino/teste:** separado por data (treino antes de 10/08/2022, teste depois), sem dividir séries MD3/MD5.
 
 ## Resultado
-| | Acurácia |
+| | Acurácia no teste |
 |---|---|
-| Treino | 74,8% |
-| Validação cruzada (5 folds) | 74,6% |
-| **Teste** | **77,0%** |
+| Chute (sempre azul) | 53,6% |
+| Regra do ouro (quem tem mais ouro aos 15 min vence) | 76,1% |
+| **SVM (linear, C=0.1)** | **77,3%** |
 
-Melhores parâmetros: `kernel=linear, C=0.01`. Treino e teste ficaram próximos, então não teve overfitting.
+- Validação cruzada: 74,8% | Treino: 74,9%. O treino não ficou acima do teste, então não há overfitting.
+- O SVM ganha pouco da regra do ouro: a diferença de ouro aos 15 min já explica a maior parte do resultado.
+- Quando o SVM está confiante (jogo desequilibrado), acerta 94%. Em jogos parelhos, 60%.
 
 ## Gráficos
-Os gráficos 1 a 3 vêm dos dados (partidas reais). O 4 vem do modelo.
+1. **Vitória x diferença de ouro (dados):** quanto mais ouro de vantagem, mais o time vence. É a relação principal que o SVM aprende.
+![ouro](figures/01_vitoria_por_ouro.png)
 
-1. **Vitórias por lado:** o azul vence 52,3% das partidas, então as classes estão equilibradas.
-![lado](figures/01_vitorias_por_lado.png)
+2. **SVM x regras simples:** o SVM supera o chute com folga e a regra do ouro por pouco.
+![comparação](figures/02_svm_vs_regras.png)
 
-2. **Vitória x diferença de ouro aos 15 min:** quanto maior a vantagem de ouro, maior a chance de vencer. Com mais de 4k de vantagem, o azul vence mais de 90% das vezes.
-![ouro](figures/02_vitoria_por_ouro.png)
+3. **Acerto por confiança:** a confiança é a distância da partida até a fronteira do SVM. Quanto mais longe, mais ele acerta.
+![confiança](figures/03_acerto_por_confianca.png)
 
-3. **Vitória de quem pega o objetivo primeiro:** first blood 63%, primeiro dragão 62%, primeiro arauto 59%.
-![objetivos](figures/03_vitoria_por_objetivo.png)
-
-4. **Matriz de confusão (SVM no teste):** 1.656 acertos em 2.150 partidas (77,0%).
+4. **Matriz de confusão:** 1.663 acertos em 2.150 partidas. Os erros estão parecidos nos dois lados (236 e 251), então o modelo não favorece nenhum time.
 ![matriz](figures/04_matriz_confusao.png)
